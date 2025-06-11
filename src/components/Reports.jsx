@@ -79,6 +79,19 @@ const Reports = () => {
         }
     };
 
+    const generateShareableLink = (patientCode) => {
+        const port = window.location.port;
+        return `http://${window.location.hostname}:${port}/view-report/${patientCode}`;
+    };
+
+    const shareViaWhatsApp = () => {
+        const patientCode = selectedPatient;
+        const link = generateShareableLink(patientCode);
+        const whatsappMessage = `Check out this report: ${link}`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+        window.open(whatsappUrl, '_blank');
+    };
+
     // Helper for age/sex string
     const getAgeSex = (age, gender) => `${age} Years / ${gender}`;
     // Helper for date/time
@@ -242,13 +255,13 @@ const Reports = () => {
 
         const printContents = reportRef.current.innerHTML;
         const printWindow = window.open('', '', 'height=900,width=800');
-        
+
         printWindow.document.write(`
           <html>
             <head>
               <title>Print Report</title>
               <style>
-                body { 
+                body {
                   margin: 0;
                   padding: 0;
                   background: #fff;
@@ -263,7 +276,7 @@ const Reports = () => {
                 }
                 @media print {
                   body { margin: 0; }
-                  .report-content { 
+                  .report-content {
                     width: 100%;
                     padding: 0;
                   }
@@ -280,7 +293,7 @@ const Reports = () => {
 
         printWindow.document.close();
         printWindow.focus();
-        
+
         // Wait for images to load
         setTimeout(() => {
           printWindow.print();
@@ -421,6 +434,12 @@ const Reports = () => {
                         >
                             Download Report
                         </button>
+                        <button
+                            onClick={shareViaWhatsApp}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                            Share via WhatsApp
+                        </button>
                     </div>
                     <div
                         ref={reportRef}
@@ -542,4 +561,4 @@ const Reports = () => {
     );
 };
 
-export default Reports; 
+export default Reports;

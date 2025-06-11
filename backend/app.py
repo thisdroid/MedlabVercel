@@ -14,7 +14,7 @@ SECRET_KEY = 'your_secret_key_here'
 def init_db():
     conn = sqlite3.connect('patients.db')
     db_cursor = conn.cursor()
-    
+
     # Create patients table if not exists
     db_cursor.execute('''
         CREATE TABLE IF NOT EXISTS patients (
@@ -58,7 +58,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     conn.commit()
     conn.close()
 
@@ -77,17 +77,60 @@ def init_user_table():
 init_db()
 init_user_table()
 
+def fetch_patient_data_from_db(patient_code):
+    conn = sqlite3.connect('patients.db')
+    cursor = conn.cursor()
+
+    # Query to fetch patient details
+    query = """
+    SELECT * FROM patients
+    WHERE patient_code = ?
+    """
+    cursor.execute(query, (patient_code,))
+    patient_data = cursor.fetchone()
+
+    conn.close()
+
+    if patient_data:
+        # Convert the patient data to a dictionary
+        columns = [column[0] for column in cursor.description]
+        patient_data_dict = dict(zip(columns, patient_data))
+
+        # Format the response without lab information
+        response_data = {
+            "report": {
+                "patientName": patient_data_dict.get("full_name", ""),
+                "patientAge": patient_data_dict.get("age", ""),
+                "patientGender": patient_data_dict.get("gender", ""),
+                "patientCode": patient_data_dict.get("patient_code", ""),
+                "patientContact": patient_data_dict.get("contact_number", ""),
+                "refBy": patient_data_dict.get("ref_by", ""),
+                "labRefNo": patient_data_dict.get("lab_ref_no", ""),
+            }
+        }
+        return response_data
+    else:
+        return None
+
+@app.route('/api/patient-report/<patient_code>', methods=['GET'])
+def get_patient_report(patient_code):
+    patient_data = fetch_patient_data_from_db(patient_code)
+
+    if patient_data:
+        return jsonify(patient_data)
+    else:
+        return jsonify({"error": "Patient not found"}), 404
+
+# Existing routes
 @app.route('/api/patients', methods=['GET'])
 def get_patients():
     conn = sqlite3.connect('patients.db')
     db_cursor = conn.cursor()
-    
-    # Execute query to get all patients
+
     db_cursor.execute('SELECT * FROM patients ORDER BY created_at DESC')
-    patients = db_cursor.fetchall()  
+    patients = db_cursor.fetchall()
     conn.close()
-    
-    # Convert to list of dictionaries
+
     patient_list = []
     for patient in patients:
         patient_list.append({
@@ -101,24 +144,22 @@ def get_patients():
             'address': patient[7],
             'createdAt': patient[8]
         })
-    
+
     return jsonify(patient_list)
 
 @app.route('/api/patients', methods=['POST'])
 def add_patient():
     data = request.json
-    
-    # Validate required fields
+
     required_fields = ['fullName', 'age', 'gender', 'contactNumber', 'email', 'patientCode', 'address']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'Missing required field: {field}'}), 400
-    
+
     try:
         conn = sqlite3.connect('patients.db')
         db_cursor = conn.cursor()
-        
-        # Execute insert query
+
         db_cursor.execute('''
             INSERT INTO patients (full_name, age, gender, contact_number, email, patient_code, address)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -143,25 +184,23 @@ def add_patient():
 def get_tests():
     conn = sqlite3.connect('patients.db')
     db_cursor = conn.cursor()
-    
-    # Execute join query to get tests with patient information
+
     db_cursor.execute('''
-        SELECT t.*, p.full_name, p.patient_code 
-        FROM tests t 
-        JOIN patients p ON t.patient_id = p.id 
+        SELECT t.*, p.full_name, p.patient_code
+        FROM tests t
+        JOIN patients p ON t.patient_id = p.id
         ORDER BY t.created_at DESC
     ''')
-    tests = db_cursor.fetchall()  # Fetch all rows at once
+    tests = db_cursor.fetchall()
     conn.close()
-    
-    # Convert to list of dictionaries
+
     test_list = []
     for test in tests:
         test_list.append({
             'id': test[0],
             'patientId': test[1],
-            'patientName': test[9],
-            'patientCode': test[10],
+            'patientName': test[9] if len(test) > 9 else "",
+            'patientCode': test[10] if len(test) > 10 else "",
             'testCategory': test[2],
             'testName': test[3],
             'testValue': test[4],
@@ -170,24 +209,22 @@ def get_tests():
             'additionalNote': test[7],
             'createdAt': test[8]
         })
-    
+
     return jsonify(test_list)
 
 @app.route('/api/tests', methods=['POST'])
 def add_test():
     data = request.json
-    
-    # Validate required fields
+
     required_fields = ['patientId', 'testCategory', 'testName', 'testValue', 'normalRange', 'unit']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'Missing required field: {field}'}), 400
-    
+
     try:
         conn = sqlite3.connect('patients.db')
         db_cursor = conn.cursor()
-        
-        # Execute insert query
+
         db_cursor.execute('''
             INSERT INTO tests (patient_id, test_category, test_name, test_value, normal_range, unit, additional_note)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -269,32 +306,27 @@ def generate_report(patient_id):
     try:
         conn = sqlite3.connect('patients.db')
         db_cursor = conn.cursor()
-        
-        # Get patient information
+
         db_cursor.execute('SELECT * FROM patients WHERE id = ?', (patient_id,))
         patient = db_cursor.fetchone()
-        
+
         if not patient:
             return jsonify({'error': 'Patient not found'}), 404
-        
-        # Get all tests for the patient
+
         db_cursor.execute('''
-            SELECT * FROM tests 
-            WHERE patient_id = ? 
+            SELECT * FROM tests
+            WHERE patient_id = ?
             ORDER BY created_at DESC
         ''', (patient_id,))
         tests = db_cursor.fetchall()
-        
+
         conn.close()
-        
-        # Convert tests to list of dictionaries and calculate status
+
         test_list = []
         for test in tests:
-            # Calculate status
             value = test[4]
             ref_range = str(test[5])
             status = 'Normal'
-            # parse reference range (e.g., '32–36', 'M: 13–16; F: 11.5–14.5', '<1.1', 'Up to 60')
             ref = ref_range.replace('–', '-').replace(' ', '')
             match = re.match(r'^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$', ref)
             if match:
@@ -317,7 +349,7 @@ def generate_report(patient_id):
                         status = 'High'
                 except:
                     pass
-            # else: leave as Normal
+
             test_list.append({
                 'id': test[0],
                 'testCategory': test[2],
@@ -329,8 +361,7 @@ def generate_report(patient_id):
                 'createdAt': test[8],
                 'status': status
             })
-        
-        # Create report object
+
         report = {
             'patientName': patient[1],
             'patientCode': patient[6],
@@ -338,7 +369,7 @@ def generate_report(patient_id):
             'patientGender': patient[3],
             'tests': test_list
         }
-        
+
         return jsonify(report)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -375,12 +406,11 @@ def login():
     db_cursor.execute('SELECT id, password FROM users WHERE email = ?', (email,))
     user = db_cursor.fetchone()
     if user:
-        # User exists, check password
         if bcrypt.checkpw(password.encode('utf-8'), user[1]):
             payload = {
                 'user_id': user[0],
                 'email': email,
-                'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
+                'exp': datetime.utcnow() + datetime.timedelta(days=1)
             }
             token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
             conn.close()
@@ -389,7 +419,6 @@ def login():
             conn.close()
             return jsonify({'error': 'Invalid credentials'}), 401
     else:
-        # User does not exist, create user and log in
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         db_cursor.execute('INSERT INTO users (email, password) VALUES (?, ?)', (email, hashed))
         user_id = db_cursor.lastrowid
@@ -398,10 +427,10 @@ def login():
         payload = {
             'user_id': user_id,
             'email': email,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
+            'exp': datetime.utcnow() + datetime.timedelta(days=1)
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
         return jsonify({'token': token, 'email': email})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000) 
+    app.run(debug=True, port=5000)

@@ -5,11 +5,11 @@ import Dashboard from './components/Dashboard';
 import Patients from './components/Patients';
 import Tests from './components/Tests';
 import Reports from './components/Reports';
+import ViewReport from './components/ViewReport';
 import Analytics from './components/Analytics';
 import Lab from './components/Lab';
 import SignIn from './pages/SignIn';
-import './App.css'
-import logo from './assets/logo.svg';
+import './App.css';
 import { AuthProvider, useAuth } from './AuthContext';
 
 function RequireAuth({ children }) {
@@ -22,13 +22,14 @@ function RequireAuth({ children }) {
 }
 
 function AppLayout() {
-  const location = window.location.pathname;
+  const location = useLocation();
   const { auth } = useAuth();
-  const isSignIn = location === '/signin';
+  const isSignIn = location.pathname === '/signin';
+  const isViewReport = location.pathname.startsWith('/view-report/');
+
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Only hide Sidebar on sign-in page */}
-      {!isSignIn && auth && <Sidebar />}
+      {!isSignIn && !isViewReport && auth && <Sidebar />}
       <main className="flex-1">
         <Routes>
           <Route path="/signin" element={<SignIn />} />
@@ -38,6 +39,7 @@ function AppLayout() {
           <Route path="/reports" element={<RequireAuth><Reports /></RequireAuth>} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/lab" element={<Lab />} />
+          <Route path="/view-report/:patientCode" element={<ViewReport />} />
         </Routes>
       </main>
     </div>

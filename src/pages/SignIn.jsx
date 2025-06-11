@@ -31,7 +31,7 @@ const SignIn = () => {
         <p className="text-gray-500 mb-6">Laboratory Management System</p>
         <form className="w-full" onSubmit={handleSubmit}>
           <label className="block text-gray-700 mb-1">Email</label>
-          <input type="email" className="w-full mb-4 px-3 py-2 rounded bg-blue-50 border border-blue-100 focus:outline-none" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input type="email" className="w-full mb-4 pzx-3 py-2 rounded bg-blue-50 border border-blue-100 focus:outline-none" value={email} onChange={e => setEmail(e.target.value)} required />
           <label className="block text-gray-700 mb-1">Password</label>
           <input type="password" className="w-full mb-4 px-3 py-2 rounded bg-blue-50 border border-blue-100 focus:outline-none" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
           {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
