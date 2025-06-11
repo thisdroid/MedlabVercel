@@ -32,7 +32,7 @@ function AppLayout() {
       {!isSignIn && !isViewReport && auth && <Sidebar />}
       <main className="flex-1">
         <Routes>
-          <Route path="/signin" element={<SignIn />} />
+          <Route path="/" element={<SignIn />} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/patients" element={<RequireAuth><Patients /></RequireAuth>} />
           <Route path="/tests" element={<RequireAuth><Tests /></RequireAuth>} />

@@ -394,8 +394,8 @@ def signup():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/login', methods=['POST'])
-def login():
+@app.route('/api/SignIn', methods=['POST'])
+def signin():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
