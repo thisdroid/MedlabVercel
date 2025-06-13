@@ -9,6 +9,7 @@ import ViewReport from './components/ViewReport';
 import Analytics from './components/Analytics';
 import Lab from './components/Lab';
 import SignIn from './pages/SignIn';
+import SettingsDropdown from './components/Settings';
 import './App.css';
 import { AuthProvider, useAuth } from './AuthContext';
 
@@ -24,15 +25,16 @@ function RequireAuth({ children }) {
 function AppLayout() {
   const location = useLocation();
   const { auth } = useAuth();
-  const isSignIn = location.pathname === '/signin';
+  const isSignIn = location.pathname === '/';
   const isViewReport = location.pathname.startsWith('/view-report/');
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {!isSignIn && !isViewReport && auth && <Sidebar />}
+      {!isSignIn && auth && !isViewReport && <Sidebar />}
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<SignIn />} />
+          <Route path="/signin" element={<SignIn />} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/patients" element={<RequireAuth><Patients /></RequireAuth>} />
           <Route path="/tests" element={<RequireAuth><Tests /></RequireAuth>} />
@@ -42,6 +44,7 @@ function AppLayout() {
           <Route path="/view-report/:patientCode" element={<ViewReport />} />
         </Routes>
       </main>
+      {!isSignIn && auth && <SettingsDropdown />}
     </div>
   );
 }
